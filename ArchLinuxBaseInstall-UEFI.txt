@@ -1,0 +1,210 @@
+Instalar archLinux EFI ->
+
+Cargar Teclado Según Pais:
+
+	localectl list-keymaps | grep la-latin1 -> Seleccionamos La entra por Teclado.
+	loadkeys la-latin1 -> Correcto.
+	Ver si tu pc soporte EFI -> ls /sys/firmware/efi/efivars
+	
+Nota Generara Locale Sistema LiveCD.
+	*Generar Locate:
+	 	nano /etc/locale.gen 
+				es_CO.UTF-8
+			locale-gen
+		Idioma del Sistema:
+			echo "LANG=es_CO.UTF-8" >> /etc/locale.conf
+		Teclado del Sistema:
+			echo "KEYMAP=la-latin1" >> /etc/vconsole.conf
+			
+Validar Conexión a Internet:
+	ip a -> Validos la Ip conexión a internet.
+	ip addr
+	wifi-menu -> si tenemos tarjeta wifi.
+	lspci -vnm -d 14e4: Buscar Driver.
+	
+Configurar Reloj del Sistema:
+	timedatectl set-ntp true
+	
+Actualizar los repositorios:
+	Pacman -Syyy
+	
+Instalar Reflector:
+	pacman -S reflector
+	
+Utilizar Reflector - Filtrar por Pais:
+	reflector -c US -a 6 --sort rate --save /etc/pacman.d/mirrorlist
+	
+Listar discos:
+	lsblk
+	lsblk -a
+	lsblk -l
+	
+Crear Particiones:
+	fdisk /dev/sda
+		Crear Nueva Partición => g
+		Nueva => n
+		Defaults =>
+		Defaults =>
+		Last Sector => +280M
+		Comando ==> t
+		Selecionar partición => Defaults
+		Tipo de Particion => L Listar Opciones
+	--------------------------------------
+		Crear Nueva partición.
+	--------------------------------------
+		Nueva => n
+		Defaults =>
+		Defaults =>
+		Last Sector => Defaults -> Todo el Sector
+		Comando ==> w
+	---------------------------------------
+		Se finaliza con w -> Escribir.
+	---------------------------------------
+	
+	o
+	
+	cfdisk
+		
+Listar Discos:
+	lsblk
+	
+Formatear Particiones.
+	mkfs.fat -F32 /dev/sda1
+	mkfs.ext4 /dev/sda2
+	
+Listar Discos:
+	lsblk
+	
+Montar Particiones -> Discos.
+	mount /dev/sda2 /mnt
+	mkdir /mnt/boot
+	mount /dev/sda1 /mnt/boot
+	
+Listar Discos:
+	lsblk
+	
+Instalar Sistema Base:
+	pacstrap /mnt base linux linux-firmware nano
+	
+Generamos el fstab:
+	genfstab -U /mnt >> /mnt/etc/fstab
+			vemos el documento Generado -> cat /mnt/etc/fstab
+			
+Ingresamos al Sistema Instalado:
+	arch-chroot /mnt
+	
+		Montar Swap -> Archivo --> Opcional Porque se puede directamente en una Partición.
+			fallocate -l 3GB /swapfile
+				chmod 600 /swapfile
+				mkswap /swapfile
+				swapon /swapfile
+				
+		Ingresar el Swapfile al fstab:
+			# nano /etc/fstab
+				/swapfile none swap defaults 0 0
+				
+		Ver Zona Horaria:
+			# timedatectl list-timezones | grep Bogota
+			
+		Agregamos Zona Horaria:
+			# ln -sf /usr/share/zoneinfo/America/Bogota /etc/localtime
+			
+		Ejecute hwclock para generar el archivo /etc/adjtime:
+			# hwclock --systohc
+				Ajustar Reloj del sistema al arrancar
+					hwclock -w
+					
+		Generar Locate:
+			nano /etc/locale.gen 
+				es_CO.UTF-8
+			locale-gen
+			
+		Idioma del Sistema:
+			echo "LANG=es_CO.UTF-8" >> /etc/locale.conf
+			
+		Teclado del Sistema:
+			echo "KEYMAP=la-latin1" >> /etc/vconsole.conf
+			
+		Nombre del Sistema:
+			echo "archlinux-hp" >> /etc/hostname 
+				
+		Sistema Localhost
+			nano /etc/hosts
+				127.0.0.1	localhost
+				::1			localhost
+				127.0.1.1	arclinux-hp.localdomain	archlinux-hp
+				
+		Actualizar Contraseña Root:
+			passwd
+			
+		Instalar grub y utilidades:
+			
+			pacman -S grub efibootmgr networkmanager network-manager-applet wireless_tools wpa_supplicant \
+			dialog os-prober mtools dosfstools base-devel linux-headers xf86-input-synaptics \
+			xdg-utils xdg-user-dirs
+			
+			pacman -S bluez bluez-utils cups git wget pulseaudio pulseaudio-bluetooth \
+			pulseaudio-alsa pulseaudio-equalizer pulseaudio-jack netctl gvfs \
+			gvfs-afc gvfs-mtp ntfs-3g dhcpcd
+			
+		listar discos:
+			lsblk
+			
+		Instalar GRUB:
+			Con UEFI -> grub-install --efi-directory=/boot --bootloader-id='Arch Linux' --target=x86_64-efi
+			
+		Actualizar GRUB:
+			grub-mkconfig -o /boot/grub/grub.cfg
+			
+		Habilitar Servicios:
+			systemctl enable NetworkManager
+			systemctl enable bluetooth
+			systemctl enable org.cups.cupsd
+			
+		Nuevo usuario:
+			useradd -m -g users -G audio,lp,optical,storage,video,wheel,games,power,scanner -s /bin/bash tu_usuario
+			
+			useradd -mG wheel tu_usuario
+				Actualizar Passwd:
+					passwd tu_usuario
+					
+		Permiso al Usuario de Administrador:
+			EDITOR=nano visudo
+			Nota: Descomentar wheel
+			
+		Salir:
+			exit
+Desmontar Unidades:
+	umount -a
+Reinicio Sistema:
+	reboot.
+		
+Instalar driver de Video:
+	instalar mesa:
+		pacman -S mesa mesa-demos -> glxinfo
+	Controlador de Video:
+		lspci | gerp VGA
+			AMD - 
+				pacman -S xf86-video-amdgpu amd-ucode xf86-video-ati xf86-video-vesa 
+	Ver lista de Driver:
+		pacman -Ss xf86-video
+	
+Instalar yay:
+	Clonar en aur.archlinux.org/yay.git
+		cd yay -> makepkg -si PKGBUILD
+		
+Instalar Complemento Grafico:
+	sudo pacman -S xorg-server xorg-xinit
+	sudo pacman -S xorg
+	
+Gestor de Inicio de Sesión:
+	GNome
+		sudo pacman -S gdm
+		systemctl enable gdm.service
+		
+	Gestor de pantalla multiescritorio -> LightDM
+		sudo pacman -S lightdm lightdm-gtk-greeter
+		sudo systemctl enable lightdm.service
+	KDE
+		sudo pacman -S sddm
+		sudo systemctl enable sddm.service
